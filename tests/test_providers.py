@@ -23,7 +23,7 @@ class FakeResponse:
     def __exit__(self, *_):
         return False
 
-    def read(self):
+    def read(self, *_):
         return json.dumps(self.payload).encode("utf-8")
 
 
@@ -56,6 +56,24 @@ class ProviderTest(unittest.TestCase):
         payload = json.loads(request.data)
         self.assertFalse(payload["stream"])
         self.assertEqual(payload["format"], "json")
+
+    @patch("retrofit_rag.providers.urlopen")
+    def test_ollama_readiness_requires_configured_model(self, mocked_urlopen):
+        mocked_urlopen.return_value = FakeResponse(
+            {"models": [{"name": "llama3.2:3b-instruct-q4_K_M"}]}
+        )
+        client = OllamaLLM("llama3.2:3b-instruct-q4_K_M", "http://ollama.example")
+        self.assertTrue(client.ready())
+        request = mocked_urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://ollama.example/api/tags")
+
+    @patch("retrofit_rag.providers.urlopen")
+    def test_openai_readiness_checks_models_endpoint(self, mocked_urlopen):
+        mocked_urlopen.return_value = FakeResponse({"data": []})
+        client = OpenAICompatibleLLM("test-key", "test-model", "https://llm.example/v1")
+        self.assertTrue(client.ready())
+        request = mocked_urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "https://llm.example/v1/models")
 
     def test_openai_environment_requires_key_and_model(self):
         with patch.dict(os.environ, {}, clear=True):

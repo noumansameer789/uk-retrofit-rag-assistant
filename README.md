@@ -1,94 +1,80 @@
 # UK Retrofit LLM/RAG Assistant
 
-A citation-first LLM application over curated official UK home-energy guidance. It combines deterministic sparse retrieval with either an OpenAI-compatible chat endpoint or a local Ollama model, then rejects outputs that fail a strict grounding contract.
+[![CI](https://github.com/noumansameer789/uk-retrofit-rag-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/noumansameer789/uk-retrofit-rag-assistant/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-This is an independently built portfolio system. It is not an eligibility calculator and does not replace current guidance from the linked authorities.
+A citation-first LLM application over allowlisted official UK home-energy guidance. It uses
+deterministic BM25 retrieval, a local Ollama or OpenAI-compatible model, and deterministic
+post-generation controls. An answer is released only when its JSON, citations and factual
+sentences satisfy the grounding contract.
 
-## Why this is a genuine LLM/RAG build
+This is an independently built portfolio system, not an eligibility calculator or a replacement
+for current instructions from the cited authority.
 
-- pluggable OpenAI-compatible and Ollama chat adapters
-- FastAPI `POST /ask` endpoint with typed request and response models
-- retrieved evidence inserted into an explicit untrusted-context boundary
-- JSON generation contract with sentence-level citation enforcement
-- abstention for unsupported questions, unsafe eligibility decisions and prompt injection
-- retrieved-context injection screening and invalid-citation rejection
-- labelled retrieval evaluation with hit-rate, MRR and abstention metrics
-- mocked provider/API tests: CI never needs an API key or live model
-- one-command local stack that provisions Ollama and downloads the model automatically
-- Docker packaging and GitHub Actions validation
+## What this project demonstrates
+
+- FastAPI `POST /ask`, liveness `/health` and model-aware readiness `/ready`
+- zero-key Docker Compose stack that provisions Ollama and the pinned local model automatically
+- swappable Ollama and OpenAI-compatible adapters with bounded HTTP responses
+- reproducible official-source ingestion with hostname, redirect, content-type and size controls
+- source freshness, stable IDs and SHA-256 evidence digests returned with citations
+- deterministic Okapi BM25 retrieval and a transparent labelled retrieval evaluation
+- untrusted-context prompt construction and Unicode-canonicalised injection screening
+- exact JSON-field, sentence-level citation and unsafe-eligibility-claim validation
+- one constrained model-output repair attempt, followed by safe refusal
+- non-root, read-only API container plus CI linting, tests and dependency auditing
 
 ## Architecture
 
 ```mermaid
-flowchart LR
-    Q[Question] --> S[Input controls]
-    S --> R[Sparse retriever]
+flowchart TD
+    Q[Question] --> G[Input guard]
+    G --> R[BM25 retrieval]
     R --> P[Grounded prompt]
-    P --> L[OpenAI-compatible or Ollama LLM]
-    L --> V[JSON and citation validator]
-    V -->|valid| A[Answer with sources]
-    V -->|invalid| X[Safe refusal]
+    P --> L[Ollama or compatible LLM]
+    L --> V[Deterministic validator]
+    V -->|valid| A[Answer and provenance]
+    V -->|invalid once| C[Constrained correction]
+    C --> L
+    V -->|invalid twice| X[Safe refusal]
 ```
 
-## API
+## Quick start: no key and no host Ollama
 
-### Zero-key local launch
-
-The default path needs no API key and no Ollama installation on the host. Docker Compose starts a pinned Ollama container, downloads the pinned `llama3.2:3b-instruct-q4_K_M` model into a persistent volume, waits for it, and then starts the API:
+The only host prerequisite is Docker with Compose and sufficient local disk/RAM. No external
+credential, paid API, host Ollama installation or pre-downloaded model is required.
 
 ```bash
 docker compose up --build
 ```
 
-When the API is healthy, open `http://localhost:8000/docs` or call:
+Compose starts the pinned Ollama image, pulls `llama3.2:3b-instruct-q4_K_M` into the persistent
+`ollama_models` volume, waits for that exact model, and then marks the API ready. The first start
+downloads roughly 2 GB of model weights. CPU inference is supported but slower than GPU inference.
+
+Open `http://localhost:8000/docs`, check readiness, and ask a grounded question:
 
 ```bash
+curl -s http://localhost:8000/ready
 curl -s http://localhost:8000/ask \
   -H 'Content-Type: application/json' \
   -d '{"question":"Who applies for a Boiler Upgrade Scheme grant?","top_k":3}'
 ```
 
-The first launch downloads the container image and roughly 2 GB model. Later launches reuse the `ollama_models` volume. CPU inference works but is slower than GPU inference. Stop the services with `docker compose down`; add `--volumes` only when you intentionally want to delete the downloaded model.
-
-### Manual provider configuration
-
-Install and start the service:
+Run a real model-to-API smoke check from a clean stack:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-uvicorn retrofit_rag.api:app --app-dir src --host 0.0.0.0 --port 8000
+docker compose --profile smoke up --build \
+  --abort-on-container-exit --exit-code-from smoke
+docker compose --profile smoke down
 ```
 
-Configure one provider before starting it.
+Use `docker compose down` to stop the normal stack. Add `--volumes` only when intentionally
+deleting the downloaded model.
 
-OpenAI-compatible endpoint:
+## API contract
 
-```bash
-export LLM_PROVIDER=openai
-export OPENAI_API_KEY="your-runtime-secret"
-export OPENAI_MODEL="a-model-available-to-your-account"
-# Optional: export OPENAI_BASE_URL="https://your-compatible-host/v1"
-```
-
-Local Ollama:
-
-```bash
-export LLM_PROVIDER=ollama
-export OLLAMA_MODEL="your-installed-model"
-# Optional: export OLLAMA_BASE_URL="http://localhost:11434"
-```
-
-Ask a question:
-
-```bash
-curl -s http://localhost:8000/ask \
-  -H 'Content-Type: application/json' \
-  -d '{"question":"Who applies for a Boiler Upgrade Scheme grant?","top_k":3}'
-```
-
-Response contract:
+An answered response includes both human-readable markers and machine-auditable provenance:
 
 ```json
 {
@@ -99,57 +85,109 @@ Response contract:
       "id": 1,
       "title": "Boiler Upgrade Scheme",
       "url": "https://www.gov.uk/apply-boiler-upgrade-scheme",
-      "score": 0.123456
+      "score": 1.234567,
+      "source_id": "govuk-boiler-upgrade-scheme",
+      "checked_at": "2026-09-01",
+      "content_sha256": "deacebf484be1aba926dda139f73c96b1144baf66b187aa70d5235982ce4b384"
     }
   ],
   "refusal_reason": null
 }
 ```
 
-## CLI
+Unsupported, injection-like or personal eligibility questions return `status: "refused"` without
+calling the model where possible. Provider failures return HTTP 502; missing configuration and
+failed readiness return HTTP 503.
 
-Retrieval-only inspection is deliberately available without a model:
+## Evidence and ingestion
+
+`data/sources.json` is the explicit GOV.UK/Ofgem allowlist. The committed `data/guidance.json`
+contains short project-authored synopses for deterministic review and CI. To create fresh local
+chunks from the live official pages:
+
+```bash
+PYTHONPATH=src python -m retrofit_rag.ingestion
+PYTHONPATH=src python -m retrofit_rag.app \
+  --catalogue data/generated/guidance.json "heat pump grant"
+```
+
+The ingestion path rejects non-HTTPS or non-allowlisted hosts, off-list redirects before follow,
+non-HTML responses and pages above 2 MB. It strips navigation/scripts, chunks deterministically,
+and hashes the exact normalised evidence. Generated data is ignored by Git so a human must review
+source changes before promotion. See [`data/README.md`](data/README.md).
+
+## Manual provider configuration
+
+For a non-Compose setup, install the exact runtime lock and start the API:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.lock
+uvicorn retrofit_rag.api:app --app-dir src --host 0.0.0.0 --port 8000
+```
+
+Local Ollama:
+
+```bash
+export LLM_PROVIDER=ollama
+export OLLAMA_MODEL="llama3.2:3b-instruct-q4_K_M"
+export OLLAMA_BASE_URL="http://localhost:11434"
+```
+
+OpenAI-compatible endpoint:
+
+```bash
+export LLM_PROVIDER=openai
+export OPENAI_API_KEY="your-runtime-secret"
+export OPENAI_MODEL="a-model-available-to-your-account"
+export OPENAI_BASE_URL="https://your-compatible-host/v1"
+```
+
+The default local path does not use `OPENAI_API_KEY`. `.env` is ignored by Git.
+
+## Retrieval inspection, evaluation and tests
+
+Retrieval can be inspected without any model:
 
 ```bash
 PYTHONPATH=src python -m retrofit_rag.app "heat pump grant"
 ```
 
-Use a configured model:
+Run the same local quality gates used by CI:
 
 ```bash
-PYTHONPATH=src python -m retrofit_rag.app \
-  "Who applies for the Boiler Upgrade Scheme?" --provider openai
+python -m pip install -r requirements.lock -r requirements-dev.txt
+ruff check .
+python -m compileall -q src scripts
+pip-audit -r requirements.lock
+PYTHONPATH=src python -m unittest discover -s tests -v
+PYTHONPATH=src python -m retrofit_rag.evaluation \
+  --min-hit-rate 1 --min-mrr 1 --min-abstention 1
+docker compose config --quiet
 ```
 
-## Evaluation and tests
+The committed 12-question retrieval set contains eight answerable and four deliberately unrelated
+questions. CI currently requires hit-rate@3, mean reciprocal rank and abstention accuracy of 1.0.
+This small contract set detects regressions; it is not evidence of production accuracy. Provider
+and API tests are mocked, so CI publishes no key and does not call a paid model.
 
-The committed six-question smoke set contains four answerable and two deliberately unanswerable questions. It is a contract test, not evidence of production accuracy.
+## Security boundaries and honest limitations
 
-```bash
-PYTHONPATH=src python -m retrofit_rag.evaluation
-python -m unittest discover -s tests -v
-```
+- Questions and retrieved text are both treated as untrusted; known injection forms are blocked.
+- Every factual sentence needs an allowed source marker, and JSON citations must match those markers.
+- Personal eligibility decisions and guaranteed-funding claims are rejected.
+- A citation proves which project evidence was used, not that the model interpreted it correctly.
+- Pattern controls cannot recognise every novel injection, and a small local model can still refuse
+  a supported question after its single repair attempt.
+- This repository has no public deployment, scheduled crawler, user authentication, rate limiter,
+  monitoring or expert red-team sign-off.
 
-The evaluation reports `hit_rate_at_k`, `mean_reciprocal_rank` and `abstention_accuracy`. CI requires all three to remain at `1.0` on this small labelled set.
+See [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) for trust boundaries, abuse cases, residual risks
+and the controls a real public deployment would still require. Vulnerabilities should be reported
+according to [`SECURITY.md`](SECURITY.md).
 
-## Safety boundaries
+## Licence
 
-- API keys are read only from runtime environment variables and `.env` is ignored.
-- Questions attempting instruction override, prompt disclosure or secret extraction are refused before generation.
-- Personal eligibility or guaranteed-funding decisions are refused.
-- Retrieved text containing instruction-injection patterns is discarded.
-- Every factual sentence must contain a valid source marker, and the JSON citation list must match those markers.
-- A valid citation proves provenance, not that the source is still current; production deployment would need scheduled crawling, versioning, freshness alerts and a substantially larger expert-labelled evaluation set.
-
-## Docker
-
-The recommended no-key path is `docker compose up --build`. To run only the API container against an already configured provider:
-
-```bash
-docker build -t retrofit-rag .
-docker run --rm -p 8000:8000 \
-  -e LLM_PROVIDER \
-  -e OPENAI_API_KEY \
-  -e OPENAI_MODEL \
-  retrofit-rag
-```
+Original project code and documentation are MIT licensed. Official source pages and separately
+downloaded model weights retain their own terms; see [`data/README.md`](data/README.md).

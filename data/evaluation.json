@@ -12,6 +12,18 @@
     ]
   },
   {
+    "question": "What information can an Energy Performance Certificate recommend?",
+    "relevant_urls": [
+      "https://www.gov.uk/buy-sell-your-home/energy-performance-certificates"
+    ]
+  },
+  {
+    "question": "What can affect eligibility and availability for the Warm Homes Local Grant?",
+    "relevant_urls": [
+      "https://www.gov.uk/apply-warm-homes-local-grant"
+    ]
+  },
+  {
     "question": "Who applies for Boiler Upgrade Scheme grants?",
     "relevant_urls": [
       "https://www.gov.uk/apply-boiler-upgrade-scheme"
@@ -24,11 +36,31 @@
     ]
   },
   {
+    "question": "Which low-carbon heating systems are mentioned by the Boiler Upgrade Scheme?",
+    "relevant_urls": [
+      "https://www.gov.uk/apply-boiler-upgrade-scheme"
+    ]
+  },
+  {
+    "question": "Why should household energy advice be checked before a decision?",
+    "relevant_urls": [
+      "https://www.ofgem.gov.uk/information-consumers/energy-advice-households"
+    ]
+  },
+  {
     "question": "What is tomorrow's weather in Manchester?",
     "relevant_urls": []
   },
   {
     "question": "Who won the latest football match?",
+    "relevant_urls": []
+  },
+  {
+    "question": "How do I renew a passport?",
+    "relevant_urls": []
+  },
+  {
+    "question": "Give me a chocolate cake recipe.",
     "relevant_urls": []
   }
 ]

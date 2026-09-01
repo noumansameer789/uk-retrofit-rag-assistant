@@ -1,0 +1,26 @@
+[
+  {
+    "source_id": "govuk-epc",
+    "title": "Energy Performance Certificates",
+    "url": "https://www.gov.uk/buy-sell-your-home/energy-performance-certificates",
+    "publisher": "GOV.UK"
+  },
+  {
+    "source_id": "govuk-warm-homes-local-grant",
+    "title": "Warm Homes: Local Grant",
+    "url": "https://www.gov.uk/apply-warm-homes-local-grant",
+    "publisher": "GOV.UK"
+  },
+  {
+    "source_id": "govuk-boiler-upgrade-scheme",
+    "title": "Boiler Upgrade Scheme",
+    "url": "https://www.gov.uk/apply-boiler-upgrade-scheme",
+    "publisher": "GOV.UK"
+  },
+  {
+    "source_id": "ofgem-household-energy-advice",
+    "title": "Ofgem Energy Advice",
+    "url": "https://www.ofgem.gov.uk/information-consumers/energy-advice-households",
+    "publisher": "Ofgem"
+  }
+]

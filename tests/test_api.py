@@ -5,7 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 from pydantic import ValidationError
-from retrofit_rag.api import AskRequest, ask
+
+from retrofit_rag.api import AskRequest, ask, ready
 from retrofit_rag.rag import RAGService
 from retrofit_rag.retrieval import Document, Retriever
 
@@ -18,6 +19,9 @@ class FakeLLM:
                 "citations": [1],
             }
         )
+
+    def ready(self):
+        return True
 
 
 class APITest(unittest.TestCase):
@@ -50,6 +54,9 @@ class APITest(unittest.TestCase):
     def test_request_validation_rejects_empty_question(self):
         with self.assertRaises(ValidationError):
             AskRequest(question="")
+
+    def test_ready_checks_model_adapter(self):
+        self.assertEqual(ready(self.service), {"status": "ready"})
 
 
 if __name__ == "__main__":

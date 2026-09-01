@@ -15,8 +15,8 @@ class EvaluationTest(unittest.TestCase):
             load_cases(ROOT / "data" / "evaluation.json"),
             k=3,
         )
-        self.assertEqual(metrics.answerable_cases, 4)
-        self.assertEqual(metrics.unanswerable_cases, 2)
+        self.assertEqual(metrics.answerable_cases, 8)
+        self.assertEqual(metrics.unanswerable_cases, 4)
         self.assertEqual(metrics.hit_rate_at_k, 1.0)
         self.assertEqual(metrics.mean_reciprocal_rank, 1.0)
         self.assertEqual(metrics.abstention_accuracy, 1.0)

@@ -2,21 +2,41 @@
   {
     "title": "Energy Performance Certificates",
     "url": "https://www.gov.uk/buy-sell-your-home/energy-performance-certificates",
-    "text": "An Energy Performance Certificate rates a property's energy efficiency and lists recommended improvements with indicative costs and savings."
+    "text": "An Energy Performance Certificate rates a property's energy efficiency and lists recommended improvements with indicative costs and savings.",
+    "document_id": "govuk-epc-curated-001",
+    "source_id": "govuk-epc",
+    "checked_at": "2026-09-01",
+    "content_sha256": "f7800ee1e79784676bacabf62f4c5e29a6fe44775f3a9cfb4a8e6322f0f34bac",
+    "chunk_id": "curated-001"
   },
   {
     "title": "Warm Homes: Local Grant",
     "url": "https://www.gov.uk/apply-warm-homes-local-grant",
-    "text": "Eligible lower-income households may receive funded energy-efficiency measures through participating local authorities. Eligibility and availability depend on household and property criteria."
+    "text": "Eligible lower-income households may receive funded energy-efficiency measures through participating local authorities. Eligibility and availability depend on household and property criteria.",
+    "document_id": "govuk-warm-homes-local-grant-curated-001",
+    "source_id": "govuk-warm-homes-local-grant",
+    "checked_at": "2026-09-01",
+    "content_sha256": "e0b4df15356f89cd453e82eefc4e695b536089c9c31356c326985b0d62008cc6",
+    "chunk_id": "curated-001"
   },
   {
     "title": "Boiler Upgrade Scheme",
     "url": "https://www.gov.uk/apply-boiler-upgrade-scheme",
-    "text": "The Boiler Upgrade Scheme provides grants toward replacing fossil-fuel heating systems with a heat pump or biomass boiler in England and Wales. Installers apply on behalf of property owners."
+    "text": "The Boiler Upgrade Scheme provides grants toward replacing fossil-fuel heating systems with a heat pump or biomass boiler in England and Wales. Installers apply on behalf of property owners.",
+    "document_id": "govuk-boiler-upgrade-scheme-curated-001",
+    "source_id": "govuk-boiler-upgrade-scheme",
+    "checked_at": "2026-09-01",
+    "content_sha256": "deacebf484be1aba926dda139f73c96b1144baf66b187aa70d5235982ce4b384",
+    "chunk_id": "curated-001"
   },
   {
     "title": "Ofgem Energy Advice",
     "url": "https://www.ofgem.gov.uk/information-consumers/energy-advice-households",
-    "text": "Ofgem publishes household energy guidance, consumer protections and routes to support. Advice should be checked against current eligibility rules before a decision."
+    "text": "Ofgem publishes household energy guidance, consumer protections and routes to support. Advice should be checked against current eligibility rules before a decision.",
+    "document_id": "ofgem-household-energy-advice-curated-001",
+    "source_id": "ofgem-household-energy-advice",
+    "checked_at": "2026-09-01",
+    "content_sha256": "0b8dbf6827ad7a81d79571e449e3e76140632a4a8d79d9349b443945f0db838f",
+    "chunk_id": "curated-001"
   }
 ]

@@ -14,7 +14,6 @@ from .providers import ConfigurationError, LLMError, build_llm
 from .rag import RAGService
 from .retrieval import Retriever, load_catalogue
 
-
 DEFAULT_CATALOGUE = Path(__file__).parents[2] / "data" / "guidance.json"
 
 
@@ -28,6 +27,9 @@ class CitationResponse(BaseModel):
     title: str
     url: str
     score: float
+    source_id: str | None = None
+    checked_at: str | None = None
+    content_sha256: str | None = None
 
 
 class AskResponse(BaseModel):
@@ -48,7 +50,7 @@ def get_service() -> RAGService:
 
 app = FastAPI(
     title="UK Retrofit RAG Assistant",
-    version="1.0.0",
+    version="2.0.0",
     description="Citation-first LLM answers over curated official UK guidance.",
 )
 
@@ -71,6 +73,22 @@ def health() -> dict[str, object]:
         "provider_configured": provider in {"openai", "openai-compatible", "ollama"},
         "provider": provider or None,
     }
+
+
+@app.get("/ready", response_model=None)
+def ready(service: RAGService = Depends(get_service)) -> dict[str, object] | JSONResponse:
+    """Confirm that the configured provider and exact model are reachable."""
+
+    try:
+        provider_ready = service.llm.ready()
+    except LLMError as exc:
+        return JSONResponse(status_code=503, content={"status": "not_ready", "detail": str(exc)})
+    if not provider_ready:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "detail": "Configured model is unavailable"},
+        )
+    return {"status": "ready"}
 
 
 @app.post("/ask", response_model=AskResponse)

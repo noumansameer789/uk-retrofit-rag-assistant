@@ -7,8 +7,8 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from .provenance import is_trusted_source_url, normalise_text
 from .retrieval import Retriever, load_catalogue
-
 
 ROOT = Path(__file__).parents[2]
 
@@ -24,8 +24,24 @@ class RetrievalMetrics:
 
 def load_cases(path: str | Path) -> list[dict[str, object]]:
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
-    if not isinstance(payload, list):
-        raise ValueError("Evaluation data must be a list")
+    if not isinstance(payload, list) or not payload:
+        raise ValueError("Evaluation data must be a non-empty list")
+    questions: set[str] = set()
+    for case in payload:
+        if not isinstance(case, dict):
+            raise ValueError("Every evaluation case must be an object")
+        question = case.get("question")
+        relevant_urls = case.get("relevant_urls")
+        if not isinstance(question, str) or not normalise_text(question):
+            raise ValueError("Every evaluation case requires a question")
+        if question in questions:
+            raise ValueError(f"Duplicate evaluation question: {question}")
+        if not isinstance(relevant_urls, list) or any(
+            not isinstance(url, str) or not is_trusted_source_url(url)
+            for url in relevant_urls
+        ):
+            raise ValueError("relevant_urls must contain only allowlisted HTTPS sources")
+        questions.add(question)
     return payload
 
 
@@ -34,6 +50,10 @@ def evaluate_retrieval(
     cases: list[dict[str, object]],
     k: int = 3,
 ) -> RetrievalMetrics:
+    if k < 1:
+        raise ValueError("k must be at least 1")
+    if not cases:
+        raise ValueError("At least one evaluation case is required")
     hits, reciprocal_ranks, abstentions = [], [], []
     for case in cases:
         question = str(case["question"])

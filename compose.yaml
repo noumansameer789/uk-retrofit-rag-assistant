@@ -33,17 +33,36 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b-instruct-q4_K_M}
     ports:
       - "8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test:
         - CMD
         - python
         - -c
-        - import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/ready', timeout=2)
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 10s
     restart: unless-stopped
+
+  smoke:
+    profiles: ["smoke"]
+    build: .
+    depends_on:
+      api:
+        condition: service_healthy
+    command: ["python", "/app/scripts/smoke.py"]
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
 
 volumes:
   ollama_models:

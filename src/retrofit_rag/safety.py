@@ -6,6 +6,7 @@ import json
 import re
 from dataclasses import dataclass
 
+from .provenance import normalise_text
 
 MAX_QUESTION_CHARS = 1_000
 MAX_ANSWER_CHARS = 4_000
@@ -51,7 +52,7 @@ class ValidatedGeneration:
 
 
 def unsafe_question_reason(question: str) -> str | None:
-    normalized = question.strip()
+    normalized = normalise_text(question)
     if not normalized:
         return "empty_question"
     if len(normalized) > MAX_QUESTION_CHARS:
@@ -64,7 +65,8 @@ def unsafe_question_reason(question: str) -> str | None:
 
 
 def context_is_safe(text: str) -> bool:
-    return not any(pattern.search(text) for pattern in INJECTION_PATTERNS)
+    normalized = normalise_text(text)
+    return not any(pattern.search(normalized) for pattern in INJECTION_PATTERNS)
 
 
 def _json_object(raw: str) -> dict[str, object]:
@@ -72,11 +74,8 @@ def _json_object(raw: str) -> dict[str, object]:
     if stripped.startswith("```"):
         stripped = re.sub(r"^```(?:json)?\s*", "", stripped, flags=re.IGNORECASE)
         stripped = re.sub(r"\s*```$", "", stripped)
-    start, end = stripped.find("{"), stripped.rfind("}")
-    if start < 0 or end <= start:
-        raise OutputValidationError("model_output_not_json")
     try:
-        payload = json.loads(stripped[start : end + 1])
+        payload = json.loads(stripped)
     except json.JSONDecodeError as exc:
         raise OutputValidationError("model_output_not_json") from exc
     if not isinstance(payload, dict):
@@ -94,11 +93,13 @@ def _factual_sentences(answer: str) -> list[str]:
 
 def validate_generation(raw: str, allowed_ids: set[int]) -> ValidatedGeneration:
     payload = _json_object(raw)
+    if set(payload) != {"answer", "citations"}:
+        raise OutputValidationError("unexpected_output_fields")
     answer = payload.get("answer")
     citation_ids = payload.get("citations")
     if not isinstance(answer, str) or not answer.strip():
         raise OutputValidationError("missing_answer")
-    answer = answer.strip()
+    answer = normalise_text(answer)
     if len(answer) > MAX_ANSWER_CHARS:
         raise OutputValidationError("answer_too_long")
     if not isinstance(citation_ids, list) or not citation_ids:
