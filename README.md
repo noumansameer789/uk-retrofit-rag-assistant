@@ -1,33 +1,132 @@
-# UK retrofit guidance assistant
+# UK Retrofit LLM/RAG Assistant
 
-A citation-first retrieval prototype over official UK home-energy guidance.
-Built independently to demonstrate a small, testable RAG foundation without
-letting a language model invent eligibility or grant advice.
+A citation-first LLM application over curated official UK home-energy guidance. It combines deterministic sparse retrieval with either an OpenAI-compatible chat endpoint or a local Ollama model, then rejects outputs that fail a strict grounding contract.
 
-## What it does
+This is an independently built portfolio system. It is not an eligibility calculator and does not replace current guidance from the linked authorities.
 
-- loads a source catalogue with title, URL and a concise evidence chunk
-- ranks chunks using length-normalised TF-IDF-style sparse retrieval
-- returns the source URL with every hit
-- abstains when no catalogue evidence matches
-- keeps retrieval separate from optional generation for easier evaluation
+## Why this is a genuine LLM/RAG build
 
-```bash
-python -m unittest discover -s tests -v
-PYTHONPATH=src python -m retrofit_rag.app "What support exists for a heat pump?"
+- pluggable OpenAI-compatible and Ollama chat adapters
+- FastAPI `POST /ask` endpoint with typed request and response models
+- retrieved evidence inserted into an explicit untrusted-context boundary
+- JSON generation contract with sentence-level citation enforcement
+- abstention for unsupported questions, unsafe eligibility decisions and prompt injection
+- retrieved-context injection screening and invalid-citation rejection
+- labelled retrieval evaluation with hit-rate, MRR and abstention metrics
+- mocked provider/API tests: CI never needs an API key or live model
+- Docker packaging and GitHub Actions validation
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Q[Question] --> S[Input controls]
+    S --> R[Sparse retriever]
+    R --> P[Grounded prompt]
+    P --> L[OpenAI-compatible or Ollama LLM]
+    L --> V[JSON and citation validator]
+    V -->|valid| A[Answer with sources]
+    V -->|invalid| X[Safe refusal]
 ```
 
-## Why this design
+## API
 
-Eligibility changes and the system is not a benefits calculator. A production
-version should crawl versioned official pages, record retrieval recall on a
-labelled question set, add an LLM only behind citation/abstention checks, and
-monitor stale sources. The included text is a short project-authored synopsis;
-the URLs are the authority.
+Install and start the service:
 
-## Container
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+uvicorn retrofit_rag.api:app --app-dir src --host 0.0.0.0 --port 8000
+```
+
+Configure one provider before starting it.
+
+OpenAI-compatible endpoint:
+
+```bash
+export LLM_PROVIDER=openai
+export OPENAI_API_KEY="your-runtime-secret"
+export OPENAI_MODEL="a-model-available-to-your-account"
+# Optional: export OPENAI_BASE_URL="https://your-compatible-host/v1"
+```
+
+Local Ollama:
+
+```bash
+export LLM_PROVIDER=ollama
+export OLLAMA_MODEL="your-installed-model"
+# Optional: export OLLAMA_BASE_URL="http://localhost:11434"
+```
+
+Ask a question:
+
+```bash
+curl -s http://localhost:8000/ask \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"Who applies for a Boiler Upgrade Scheme grant?","top_k":3}'
+```
+
+Response contract:
+
+```json
+{
+  "status": "answered",
+  "answer": "Installers apply on behalf of property owners [1].",
+  "citations": [
+    {
+      "id": 1,
+      "title": "Boiler Upgrade Scheme",
+      "url": "https://www.gov.uk/apply-boiler-upgrade-scheme",
+      "score": 0.123456
+    }
+  ],
+  "refusal_reason": null
+}
+```
+
+## CLI
+
+Retrieval-only inspection is deliberately available without a model:
+
+```bash
+PYTHONPATH=src python -m retrofit_rag.app "heat pump grant"
+```
+
+Use a configured model:
+
+```bash
+PYTHONPATH=src python -m retrofit_rag.app \
+  "Who applies for the Boiler Upgrade Scheme?" --provider openai
+```
+
+## Evaluation and tests
+
+The committed six-question smoke set contains four answerable and two deliberately unanswerable questions. It is a contract test, not evidence of production accuracy.
+
+```bash
+PYTHONPATH=src python -m retrofit_rag.evaluation
+python -m unittest discover -s tests -v
+```
+
+The evaluation reports `hit_rate_at_k`, `mean_reciprocal_rank` and `abstention_accuracy`. CI requires all three to remain at `1.0` on this small labelled set.
+
+## Safety boundaries
+
+- API keys are read only from runtime environment variables and `.env` is ignored.
+- Questions attempting instruction override, prompt disclosure or secret extraction are refused before generation.
+- Personal eligibility or guaranteed-funding decisions are refused.
+- Retrieved text containing instruction-injection patterns is discarded.
+- Every factual sentence must contain a valid source marker, and the JSON citation list must match those markers.
+- A valid citation proves provenance, not that the source is still current; production deployment would need scheduled crawling, versioning, freshness alerts and a substantially larger expert-labelled evaluation set.
+
+## Docker
 
 ```bash
 docker build -t retrofit-rag .
-docker run --rm retrofit-rag "energy performance certificate"
+docker run --rm -p 8000:8000 \
+  -e LLM_PROVIDER \
+  -e OPENAI_API_KEY \
+  -e OPENAI_MODEL \
+  retrofit-rag
 ```

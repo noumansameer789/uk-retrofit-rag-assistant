@@ -1,0 +1,34 @@
+[
+  {
+    "question": "What document explains a property's energy-efficiency rating?",
+    "relevant_urls": [
+      "https://www.gov.uk/buy-sell-your-home/energy-performance-certificates"
+    ]
+  },
+  {
+    "question": "What support may be available for lower-income households through councils?",
+    "relevant_urls": [
+      "https://www.gov.uk/apply-warm-homes-local-grant"
+    ]
+  },
+  {
+    "question": "Who applies for Boiler Upgrade Scheme grants?",
+    "relevant_urls": [
+      "https://www.gov.uk/apply-boiler-upgrade-scheme"
+    ]
+  },
+  {
+    "question": "Where can households find consumer energy advice and protections?",
+    "relevant_urls": [
+      "https://www.ofgem.gov.uk/information-consumers/energy-advice-households"
+    ]
+  },
+  {
+    "question": "What is tomorrow's weather in Manchester?",
+    "relevant_urls": []
+  },
+  {
+    "question": "Who won the latest football match?",
+    "relevant_urls": []
+  }
+]

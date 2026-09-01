@@ -18,6 +18,15 @@ class RetrievalTest(unittest.TestCase):
         docs = load_catalogue(Path(__file__).parents[1] / "data" / "guidance.json")
         self.assertTrue(all(doc.url.startswith("https://") for doc in docs))
 
+    def test_unrelated_query_abstains(self):
+        docs = [Document("Heat", "https://example/heat", "heat pump boiler grant")]
+        self.assertEqual(Retriever(docs).search("football score yesterday"), [])
+
+    def test_invalid_k_is_rejected(self):
+        docs = [Document("Heat", "https://example/heat", "heat pump boiler grant")]
+        with self.assertRaises(ValueError):
+            Retriever(docs).search("heat", k=0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,6 +11,11 @@ from pathlib import Path
 
 
 TOKEN = re.compile(r"[a-z0-9]+")
+STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
+    "how", "i", "in", "is", "it", "of", "on", "or", "that", "the",
+    "this", "to", "was", "what", "when", "where", "which", "who", "with",
+}
 
 
 @dataclass(frozen=True)
@@ -21,7 +26,11 @@ class Document:
 
 
 def tokens(text: str) -> list[str]:
-    return TOKEN.findall(text.lower())
+    return [
+        token
+        for token in TOKEN.findall(text.lower())
+        if len(token) > 1 and token not in STOPWORDS
+    ]
 
 
 class Retriever:
@@ -29,11 +38,20 @@ class Retriever:
         if not documents:
             raise ValueError("At least one document is required")
         self.documents = documents
-        self.term_counts = [Counter(tokens(doc.text)) for doc in documents]
+        self.term_counts = [Counter(tokens(f"{doc.title} {doc.text}")) for doc in documents]
         self.doc_freq = Counter(term for counts in self.term_counts for term in counts)
 
-    def search(self, query: str, k: int = 3) -> list[tuple[Document, float]]:
+    def search(
+        self,
+        query: str,
+        k: int = 3,
+        min_score: float = 0.0,
+    ) -> list[tuple[Document, float]]:
+        if k < 1:
+            raise ValueError("k must be at least 1")
         query_terms = Counter(tokens(query))
+        if not query_terms:
+            return []
         scores: list[tuple[Document, float]] = []
         total = len(self.documents)
         for doc, counts in zip(self.documents, self.term_counts):
@@ -42,7 +60,7 @@ class Retriever:
             for term, qtf in query_terms.items():
                 idf = math.log((1 + total) / (1 + self.doc_freq[term])) + 1
                 score += qtf * counts[term] / length * idf
-            if score:
+            if score > min_score:
                 scores.append((doc, score))
         return sorted(scores, key=lambda item: item[1], reverse=True)[:k]
 

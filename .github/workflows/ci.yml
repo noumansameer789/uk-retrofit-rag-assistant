@@ -1,11 +1,18 @@
 name: ci
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: src
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
+      - run: python -m pip install --disable-pip-version-check -r requirements.txt
       - run: python -m unittest discover -s tests -v
-      - run: PYTHONPATH=src python -m retrofit_rag.app "heat pump grant"
+      - run: python -m retrofit_rag.evaluation --min-hit-rate 1 --min-mrr 1 --min-abstention 1
+      - run: python -m retrofit_rag.app "heat pump grant"
