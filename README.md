@@ -14,6 +14,7 @@ This is an independently built portfolio system. It is not an eligibility calcul
 - retrieved-context injection screening and invalid-citation rejection
 - labelled retrieval evaluation with hit-rate, MRR and abstention metrics
 - mocked provider/API tests: CI never needs an API key or live model
+- one-command local stack that provisions Ollama and downloads the model automatically
 - Docker packaging and GitHub Actions validation
 
 ## Architecture
@@ -30,6 +31,26 @@ flowchart LR
 ```
 
 ## API
+
+### Zero-key local launch
+
+The default path needs no API key and no Ollama installation on the host. Docker Compose starts a pinned Ollama container, downloads the pinned `llama3.2:3b-instruct-q4_K_M` model into a persistent volume, waits for it, and then starts the API:
+
+```bash
+docker compose up --build
+```
+
+When the API is healthy, open `http://localhost:8000/docs` or call:
+
+```bash
+curl -s http://localhost:8000/ask \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"Who applies for a Boiler Upgrade Scheme grant?","top_k":3}'
+```
+
+The first launch downloads the container image and roughly 2 GB model. Later launches reuse the `ollama_models` volume. CPU inference works but is slower than GPU inference. Stop the services with `docker compose down`; add `--volumes` only when you intentionally want to delete the downloaded model.
+
+### Manual provider configuration
 
 Install and start the service:
 
@@ -121,6 +142,8 @@ The evaluation reports `hit_rate_at_k`, `mean_reciprocal_rank` and `abstention_a
 - A valid citation proves provenance, not that the source is still current; production deployment would need scheduled crawling, versioning, freshness alerts and a substantially larger expert-labelled evaluation set.
 
 ## Docker
+
+The recommended no-key path is `docker compose up --build`. To run only the API container against an already configured provider:
 
 ```bash
 docker build -t retrofit-rag .
