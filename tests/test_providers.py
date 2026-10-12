@@ -55,7 +55,8 @@ class ProviderTest(unittest.TestCase):
         self.assertEqual(request.full_url, "http://ollama.example/api/chat")
         payload = json.loads(request.data)
         self.assertFalse(payload["stream"])
-        self.assertEqual(payload["format"], "json")
+        self.assertEqual(payload["format"]["type"], "object")
+        self.assertEqual(payload["format"]["properties"]["citations"]["items"], {"type": "integer"})
 
     @patch("retrofit_rag.providers.urlopen")
     def test_ollama_readiness_requires_configured_model(self, mocked_urlopen):
@@ -88,3 +89,4 @@ class ProviderTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

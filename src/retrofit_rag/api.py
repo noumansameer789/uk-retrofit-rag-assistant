@@ -94,3 +94,4 @@ def ready(service: RAGService = Depends(get_service)) -> dict[str, object] | JSO
 @app.post("/ask", response_model=AskResponse)
 def ask(payload: AskRequest, service: RAGService = Depends(get_service)) -> dict[str, object]:
     return service.ask(payload.question, top_k=payload.top_k).to_dict()
+

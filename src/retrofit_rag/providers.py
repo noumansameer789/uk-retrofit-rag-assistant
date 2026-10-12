@@ -11,6 +11,12 @@ from urllib.request import Request, urlopen
 
 Messages = list[dict[str, str]]
 MAX_PROVIDER_RESPONSE_BYTES = 1_000_000
+ANSWER_SCHEMA = {
+    "type": "object",
+    "properties": {"answer": {"type": "string"},
+                   "citations": {"type": "array", "items": {"type": "integer"}}},
+    "required": ["answer", "citations"], "additionalProperties": False,
+}
 
 
 class LLM(Protocol):
@@ -58,7 +64,7 @@ def _request_json(
             return _decode_response(response)
     except HTTPError as exc:
         raise LLMError(f"LLM provider returned HTTP {exc.code}") from exc
-    except URLError as exc:
+    except (URLError, TimeoutError) as exc:
         raise LLMError("LLM provider could not be reached") from exc
 
 
@@ -116,7 +122,7 @@ class OpenAICompatibleLLM:
 class OllamaLLM:
     model: str
     base_url: str = "http://localhost:11434"
-    timeout: float = 60.0
+    timeout: float = 120.0
 
     @classmethod
     def from_env(cls) -> OllamaLLM:
@@ -137,8 +143,8 @@ class OllamaLLM:
                 "model": self.model,
                 "messages": messages,
                 "stream": False,
-                "format": "json",
-                "options": {"temperature": 0},
+                "format": ANSWER_SCHEMA,
+                "options": {"temperature": 0, "seed": 42, "num_predict": 256, "num_ctx": 4096},
             },
         )
         try:
@@ -170,3 +176,4 @@ def build_llm(provider: str) -> LLM:
     if normalized == "ollama":
         return OllamaLLM.from_env()
     raise ConfigurationError("LLM_PROVIDER must be 'openai' or 'ollama'")
+

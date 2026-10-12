@@ -1,0 +1,48 @@
+name: Real Ollama generation evaluation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - src/**
+      - data/generation_evaluation.json
+      - scripts/evaluate_live.py
+      - .github/workflows/real-model-evaluation.yml
+permissions:
+  contents: read
+concurrency:
+  group: real-model-evaluation
+  cancel-in-progress: false
+jobs:
+  real-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: src
+      OLLAMA_MODEL: llama3.2:3b-instruct-q4_K_M
+      LLM_PROVIDER: ollama
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install -r requirements.lock
+      - name: Start pinned local model server
+        run: |
+          docker run -d --name ollama -p 127.0.0.1:11434:11434 -e OLLAMA_NO_CLOUD=1 -e OLLAMA_NUM_PARALLEL=1 ollama/ollama:0.33.2
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:11434/api/version && break; sleep 2; done
+          docker exec ollama ollama pull "$OLLAMA_MODEL"
+      - name: Start real API
+        run: |
+          python -m uvicorn retrofit_rag.api:app --host 127.0.0.1 --port 8000 > api.log 2>&1 &
+          python -c 'from scripts.smoke import wait_until_ready; wait_until_ready("http://127.0.0.1:8000",120)'
+      - name: Evaluate generation and retain every answer
+        run: python scripts/evaluate_live.py --output reports/ci-live
+      - name: Upload evidence including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-model-evaluation
+          path: |
+            reports/ci-live
+            api.log
+          retention-days: 90

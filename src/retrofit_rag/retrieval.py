@@ -135,3 +135,4 @@ def load_catalogue(path: str | Path) -> list[Document]:
                 raise ValueError(f"Content digest mismatch: {document.document_id or document.url}")
         documents.append(document)
     return documents
+

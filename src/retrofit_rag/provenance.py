@@ -44,3 +44,4 @@ def is_trusted_source_url(url: str) -> bool:
         and parsed.password is None
         and parsed.port in {None, 443}
     )
+

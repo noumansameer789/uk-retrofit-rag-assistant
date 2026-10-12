@@ -46,7 +46,7 @@ class RAGServiceTest(unittest.TestCase):
     def test_grounded_answer_returns_only_used_sources(self):
         llm = FakeLLM(
             {
-                "answer": "Installers apply for property owners under the scheme [1].",
+                "answer": "Installers apply for owners [1].",
                 "citations": [1],
             }
         )
@@ -63,6 +63,25 @@ class RAGServiceTest(unittest.TestCase):
         self.assertEqual(result.status, "refused")
         self.assertEqual(result.refusal_reason, "prompt_injection")
         self.assertEqual(llm.calls, [])
+
+    def test_two_exact_sentences_receive_explicit_source_markers(self):
+        llm = FakeLLM({"answer": self.docs[0].text, "citations": [1]})
+        result = RAGService(Retriever(self.docs), llm).ask("How does the boiler scheme work?")
+        self.assertEqual(result.status, "answered")
+        self.assertEqual(result.answer.count("[1]"), 2)
+        self.assertEqual(len(llm.calls), 1)
+
+    def test_qualitative_quote_does_not_answer_amount_question(self):
+        llm = FakeLLM({"answer": "Installers apply for owners [1].", "citations": [1]})
+        result = RAGService(Retriever(self.docs), llm).ask("What is the boiler grant amount in pounds?")
+        self.assertEqual(result.status, "refused")
+        self.assertEqual(result.refusal_reason, "requested_value_missing")
+
+    def test_supported_numerical_quote_is_accepted(self):
+        docs = [Document("Example grant", "https://example.gov/grant", "The illustrative grant amount is 500 pounds.")]
+        llm = FakeLLM({"answer": docs[0].text, "citations": [1]})
+        result = RAGService(Retriever(docs), llm).ask("What is the example grant amount?")
+        self.assertEqual(result.status, "answered")
 
     def test_zero_width_obfuscated_injection_is_blocked(self):
         llm = FakeLLM({"answer": "Not called [1].", "citations": [1]})
@@ -120,14 +139,14 @@ class RAGServiceTest(unittest.TestCase):
     def test_invalid_output_gets_one_constrained_repair(self):
         llm = SequenceLLM(
             [
-                {"answer": "Installers apply for owners.", "citations": [1]},
-                {"answer": "Installers apply for property owners [1].", "citations": [1]},
+                {"answer": "Installers apply for owners [9].", "citations": [9]},
+                {"answer": "Installers apply for owners [1].", "citations": [1]},
             ]
         )
         result = RAGService(Retriever(self.docs), llm).ask("Who applies for the boiler grant?")
         self.assertEqual(result.status, "answered")
         self.assertEqual(len(llm.calls), 2)
-        self.assertIn("citation_contract_mismatch", llm.calls[1][-1]["content"])
+        self.assertIn("unknown_citation", llm.calls[1][-1]["content"])
 
     def test_citation_includes_provenance_metadata(self):
         docs = [
@@ -141,7 +160,7 @@ class RAGServiceTest(unittest.TestCase):
             )
         ]
         llm = FakeLLM(
-            {"answer": "Installers apply for property owners [1].", "citations": [1]}
+            {"answer": "Installers apply for owners [1].", "citations": [1]}
         )
         result = RAGService(Retriever(docs), llm).ask("Who applies for the boiler grant?")
         self.assertEqual(result.citations[0].source_id, "govuk-boiler")
@@ -150,7 +169,7 @@ class RAGServiceTest(unittest.TestCase):
     def test_extra_model_output_fields_are_repaired_or_rejected(self):
         llm = FakeLLM(
             {
-                "answer": "Installers apply for property owners [1].",
+                "answer": "Installers apply for owners [1].",
                 "citations": [1],
                 "confidence": 0.9,
             }
@@ -162,3 +181,4 @@ class RAGServiceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

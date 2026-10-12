@@ -1,0 +1,83 @@
+{
+  "started_at": "2026-10-12T03:57:13.837510+00:00",
+  "completed_at": "2026-10-12T03:59:37.899598+00:00",
+  "provider": "ollama",
+  "model_inventory": {
+    "models": [
+      {
+        "name": "llama3.2:3b-instruct-q4_K_M",
+        "model": "llama3.2:3b-instruct-q4_K_M",
+        "modified_at": "2026-10-11T23:57:12.720672435-04:00",
+        "size": 2019393189,
+        "digest": "a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "llama",
+          "families": [
+            "llama"
+          ],
+          "parameter_size": "3.2B",
+          "quantization_level": "Q4_K_M",
+          "context_length": 131072,
+          "embedding_length": 3072
+        },
+        "capabilities": [
+          "completion",
+          "tools"
+        ]
+      }
+    ]
+  },
+  "runtime": "Linux-6.18.44-x86_64-with-glibc2.39",
+  "python": "3.12.14",
+  "source_commit": "local working tree; see source_file_sha256",
+  "source_file_sha256": {
+    "src/retrofit_rag/__init__.py": "d74a8added8b040854f259b10bd7b35dd2a3cc8e60c354ef307b133fbd26a8c8",
+    "src/retrofit_rag/api.py": "5a64ec288f2316fdbe989ed2b36226f9f3566ecfc8bcae9136ca349afef1d4c9",
+    "src/retrofit_rag/app.py": "01ae173e749e7e2251c15579ced49cc3a3cabe9ecc75662eec2aecafb067c92b",
+    "src/retrofit_rag/evaluation.py": "a4552484aafada99a7f727b1f50342f660ed73094c3eb9e5db42ce448e06d4b8",
+    "src/retrofit_rag/ingestion.py": "8c9cfff0a91b3ebb6ad9f155ff8bd7c5c80a4b1dcfeee699f05b6f63918f3d15",
+    "src/retrofit_rag/provenance.py": "a6ce130b6da929d8b8aedcf6387a4931fe36f288c52224429c63758c3ba9635e",
+    "src/retrofit_rag/providers.py": "b422e5b07cce5d3eb395b10400503fd053e7b8440f41aa5881720d5bf93bae12",
+    "src/retrofit_rag/rag.py": "dcdeb56161d8ca6b27c2c404b24633691a4386d458d5689ab5223803b668e846",
+    "src/retrofit_rag/retrieval.py": "cb477421ac1cf33edbc6b7637c6bc3d18ab5112a27de2d26817c5afa1ba336ef",
+    "src/retrofit_rag/safety.py": "51245c3c2d9d5750ed2abcf1abf08f8f6b7792b660dda489421f8a3696462655"
+  },
+  "dataset_sha256": "bdbb2054292eeb6fb519e1ce267888fdc727933613d60bb9ef7e035ad68271ff",
+  "catalogue_sha256": "80e555657a9f1ead7f2bdc5c4ff9d1d2a304010d458628046a528faa82bacbb8",
+  "cases": 64,
+  "passed": 62,
+  "errors": 0,
+  "by_category": {
+    "answerable": {
+      "cases": 32,
+      "passed": 31
+    },
+    "out_of_scope": {
+      "cases": 4,
+      "passed": 4
+    },
+    "personal_decision": {
+      "cases": 4,
+      "passed": 4
+    },
+    "prompt_injection": {
+      "cases": 12,
+      "passed": 12
+    },
+    "unsupported_detail": {
+      "cases": 12,
+      "passed": 11
+    }
+  },
+  "answered": 32,
+  "latency_p50_seconds": 2.157721016499977,
+  "latency_max_seconds": 8.291653081999812,
+  "limitations": [
+    "Authored regression suite over four curated summaries; not independent user traffic.",
+    "Keyword matching is a limited answer-correctness proxy, not semantic adjudication.",
+    "Exact quotation prevents novel claims but cannot prove relevance or source truth.",
+    "CPU hardware, model digest and runtime affect latency and reproducibility."
+  ]
+}

@@ -95,6 +95,8 @@ def validate_generation(raw: str, allowed_ids: set[int]) -> ValidatedGeneration:
     payload = _json_object(raw)
     if set(payload) != {"answer", "citations"}:
         raise OutputValidationError("unexpected_output_fields")
+    if payload == {"answer": "", "citations": []}:
+        raise OutputValidationError("model_abstained")
     answer = payload.get("answer")
     citation_ids = payload.get("citations")
     if not isinstance(answer, str) or not answer.strip():
@@ -118,3 +120,45 @@ def validate_generation(raw: str, allowed_ids: set[int]) -> ValidatedGeneration:
     if any(pattern.search(answer) for pattern in UNSAFE_ANSWER_PATTERNS):
         raise OutputValidationError("unsafe_eligibility_claim")
     return ValidatedGeneration(answer=answer, citation_ids=tuple(sorted(cited)))
+
+
+def validate_grounded_quotes(answer: str, evidence: dict[int, str]) -> None:
+    """Require every answer span to be an exact word sequence in its cited source.
+
+    This deliberately permits extraction, not free paraphrase. It verifies textual
+    support, not source truth, relevance, completeness or policy freshness.
+    """
+    def words(value: str) -> str:
+        return " ".join(re.findall(r"\w+|[£$€]", normalise_text(value).lower()))
+
+    cursor = 0
+    for match in re.finditer(r"([^\[\]]+)\[(\d+)\]", answer):
+        if words(answer[cursor:match.start()]):
+            raise OutputValidationError("unsupported_quote")
+        quote, reference = words(match.group(1)), int(match.group(2))
+        source = words(evidence.get(reference, ""))
+        if len(quote.split()) < 4 or f" {quote} " not in f" {source} ":
+            raise OutputValidationError("unsupported_quote")
+        cursor = match.end()
+    if cursor == 0 or words(answer[cursor:]):
+        raise OutputValidationError("unsupported_quote")
+
+
+def validate_requested_detail(question: str, answer: str) -> None:
+    """Refuse vague quotations when an explicit numerical value was requested.
+
+    This conservative completeness check is not a general relevance judge. Citation
+    identifiers cannot count as values. Other semantic mismatches remain possible.
+    """
+    requires_value = re.search(
+        r"\b(how much|how many|in pounds|in GBP|income threshold|"
+        r"exact amount|grant amount|percentage|number of)\b", question, re.I
+    )
+    text = CITATION.sub("", answer)
+    numerical_value = re.search(
+        r"\d|\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|"
+        r"hundred|thousand|million)\b", text, re.I
+    )
+    if requires_value and not numerical_value:
+        raise OutputValidationError("requested_value_missing")
+

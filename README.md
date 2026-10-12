@@ -8,7 +8,7 @@ deterministic BM25 retrieval, a local Ollama or OpenAI-compatible model, and det
 post-generation controls. An answer is released only when its JSON, citations and factual
 sentences satisfy the grounding contract.
 
-This is an independently built portfolio system, not an eligibility calculator or a replacement
+This is an AI-assisted independent portfolio prototype, not an eligibility calculator or a replacement
 for current instructions from the cited authority.
 
 ## What this project demonstrates
@@ -20,7 +20,7 @@ for current instructions from the cited authority.
 - source freshness, stable IDs and SHA-256 evidence digests returned with citations
 - deterministic Okapi BM25 retrieval and a transparent labelled retrieval evaluation
 - untrusted-context prompt construction and Unicode-canonicalised injection screening
-- exact JSON-field, sentence-level citation and unsafe-eligibility-claim validation
+- exact quotation, JSON-field, sentence-level citation and unsafe-eligibility-claim validation
 - one constrained model-output repair attempt, followed by safe refusal
 - non-root, read-only API container plus CI linting, tests and dependency auditing
 
@@ -169,13 +169,44 @@ docker compose config --quiet
 
 The committed 12-question retrieval set contains eight answerable and four deliberately unrelated
 questions. CI currently requires hit-rate@3, mean reciprocal rank and abstention accuracy of 1.0.
-This small contract set detects regressions; it is not evidence of production accuracy. Provider
-and API tests are mocked, so CI publishes no key and does not call a paid model.
+This small contract set detects retrieval regressions; it is not evidence of production accuracy.
+The fast suite has 46 unit/contract tests with mocked provider responses. A separate real-model
+workflow starts Ollama and FastAPI and runs 64 authored generation cases without keys or paid APIs.
+
+## Real model evaluation
+
+On 12 October 2026, a genuine local `llama3.2:3b-instruct-q4_K_M` model served through Ollama 0.33.2
+and the HTTP API passed **64/64 authored regression cases**, with **zero provider errors**.
+The suite includes 32 answerable questions and 32 unsupported, out-of-scope, personal-decision or
+injection cases. Median request latency was 2.76 seconds on the recorded CPU runtime.
+
+[Every answer, model digest and source hashes](reports/live-evaluation-release-2026-10-12) and
+[the evaluation history and limitations](reports/README.md) are committed. An earlier frozen run
+passed 62/64; both failures are retained and explained. This is development regression evidence
+over **four project-authored guidance summaries**, not an independent benchmark or live-user accuracy.
+
+After starting the normal Docker Compose stack, run:
+
+```bash
+docker compose exec api python /app/scripts/evaluate_live.py \
+  --ollama-url http://ollama:11434 --cases /app/data/generation_evaluation.json \
+  --output /tmp/live-evaluation
+docker compose cp api:/tmp/live-evaluation reports/my-new-run
+```
+
+This executes within the API container and uses the private Compose model endpoint. A different
+output directory is required for each rerun. The separate `real-model-evaluation.yml` workflow
+provisions an equivalent local stack on GitHub Actions. Any failed case or provider error
+fails that job, and response artifacts are retained even on failure.
 
 ## Security boundaries and honest limitations
 
 - Questions and retrieved text are both treated as untrusted; known injection forms are blocked.
 - Every factual sentence needs an allowed source marker, and JSON citations must match those markers.
+- Every returned span must match the words in its cited evidence. Missing inline markers are rendered
+  only for an already verified quote with a single explicit source ID. New wording is rejected.
+- Explicit quantity questions require a numerical value in the quoted answer; source marker numbers
+  do not count. This conservative check does not establish general semantic relevance.
 - Personal eligibility decisions and guaranteed-funding claims are rejected.
 - A citation proves which project evidence was used, not that the model interpreted it correctly.
 - Pattern controls cannot recognise every novel injection, and a small local model can still refuse
@@ -191,3 +222,4 @@ according to [`SECURITY.md`](SECURITY.md).
 
 Original project code and documentation are MIT licensed. Official source pages and separately
 downloaded model weights retain their own terms; see [`data/README.md`](data/README.md).
+
