@@ -39,7 +39,7 @@ jobs:
         run: python scripts/evaluate_live.py --output reports/ci-live
       - name: Upload evidence including failures
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: real-model-evaluation
           path: |
